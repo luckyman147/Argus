@@ -1,0 +1,46 @@
+{
+  "name": "argus-repo-navigator",
+  "version": "1.0.0",
+  "description": "Argus — hundred-eyed repository navigator. Persistent SQLite code index (files, symbols, imports, references, module graph) so AI agents search first and read only exact line ranges. Ships as a skill for Claude, OpenCode, Codex, Cursor and Copilot, plus an `argus` CLI.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "argus": "scripts/argus.mjs"
+  },
+  "files": [
+    "scripts/",
+    "SKILL.md",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "dependencies": {
+    "typescript": "^5.9.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/luckyman147/Argus.git"
+  },
+  "bugs": {
+    "url": "https://github.com/luckyman147/Argus/issues"
+  },
+  "homepage": "https://github.com/luckyman147/Argus",
+  "keywords": [
+    "skill",
+    "agent",
+    "opencode",
+    "claude",
+    "codex",
+    "cursor",
+    "copilot",
+    "code-index",
+    "codebase",
+    "sqlite",
+    "navigation",
+    "search",
+    "impact-analysis",
+    "repository"
+  ],
+  "author": "Luckyman147"
+}
