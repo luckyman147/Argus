@@ -20,6 +20,104 @@ Never:
 READ EVERYTHING → UNDERSTAND → SEARCH
 ```
 
+## The concept
+
+Argus is built on one idea: **an agent should never have to read a file to find
+out where the code it needs lives**. Instead, the repository is distilled into a
+persistent, queryable knowledge graph, and the agent only reads the exact slices
+of source that matter.
+
+### The knowledge pyramid
+
+The graph is organized in four layers, from cheapest to most expensive. An agent
+works top-down — it only descends to a layer when the task actually demands it:
+
+```
+                    ┌─────────────────────┐
+                    │   USER'S TASK       │
+                    └──────────┬──────────┘
+                               ▼
+        ┌─────────────────────────────────────┐
+        │  LAYER 1 · REPOSITORY INDEX  (map)  │   cheapest
+        │  files · languages · sizes · lines  │
+        └──────────────────┬──────────────────┘
+                           ▼
+        ┌─────────────────────────────────────┐
+        │  LAYER 2 · SYMBOL INDEX    (search) │
+        │  functions · classes · components   │
+        │  interfaces · types · line ranges   │
+        └──────────────────┬──────────────────┘
+                           ▼
+        ┌─────────────────────────────────────┐
+        │  LAYER 3 · RELATIONSHIP GRAPH       │
+        │  imports  ──▶  modules              │
+        │  references ─▶ callers              │
+        │  impact ──▶ DIRECT / INDIRECT files │
+        └──────────────────┬──────────────────┘
+                           ▼
+        ┌─────────────────────────────────────┐
+        │  LAYER 4 · SOURCE CHUNKS   (source) │   most expensive
+        │  exact line ranges, read on demand  │
+        └─────────────────────────────────────┘
+```
+
+- **Layer 1** (`argus map`) answers "how big is this repo, where is everything?"
+- **Layer 2** (`argus search`) answers "where is `X` defined?" — every hit is a
+  file plus an exact `start-end` line range.
+- **Layer 3** (`argus symbol`, `argus callers`, `argus impact`) answers "if I
+  touch `X`, what breaks?" — the graph chases imports, references, and callers
+  so the agent never has to open files to discover relationships.
+- **Layer 4** (`argus source`) is the only point where raw code enters the
+  conversation — and only as the precise slice the task needs.
+
+### Why a graph instead of just grep
+
+Grep finds **tokens**; a graph finds **meaning**. When an agent changes
+`headerAlignment`, the graph already knows the chain that grep would force it to
+discover by reading file after file:
+
+```
+headerAlignment
+      │
+      ▼
+TemplateSettings.alignment
+      │
+      ▼
+FormattingControls
+      │
+      ▼
+AlignmentSelector
+      │
+      ▼
+ResumePreview
+      │
+      ├── PDFRenderer
+      └── WebRenderer
+```
+
+That chain is **persisted** in `.opencode/repo-index.sqlite`, so it is computed
+once and reused by every agent, in every session, instead of being re-derived
+from raw source every time.
+
+### The hundred eyes
+
+The Greek giant Argus had a hundred eyes: some slept while others watched, so
+nothing escaped him. The skill does the same — it constantly watches the whole
+repository (the index), while the agent only opens **one eye** at a time (the
+exact file, the exact lines).
+
+### In one flow
+
+```
+argus search AlignmentSelector        → formatting-controls.tsx:1047-1079
+argus symbol AlignmentSelector        → definition + callers + dependencies
+argus impact AlignmentSelector        → DIRECT: ResumePreview, INDIRECT: PDFRenderer…
+argus source AlignmentSelector        → read formatting-controls.tsx 1047-1079
+```
+
+Five searches and a hundred lines read always beat ten full files read — and
+that is the whole point.
+
 ## Install with agents
 
 One install, every agent (Claude, OpenCode, Codex, Cursor, Copilot).
@@ -205,16 +303,6 @@ source maps, files > 2.5 MB.
 - Exploration depth: 2 levels by default (`impact --depth N` for blast radius)
 - Never reread a file or range already in context (it changed → re-read)
 - Token budget: "5 searches + 100 lines read" beats "10 full files read"
-
-## Effectiveness testing
-
-1. **Precision** — for 10 random symbols compare `source` ranges against the file
-2. **Recall** — `callers` after `--semantic` vs VSCode "find references"
-3. **Token accounting** — same task with/without argus; target >= 60% input-token reduction
-4. **Incremental** — edit one file, re-index → `(1 changed)` in ~30 ms
-5. **Idempotency** — `init` twice → one `argus:start` marker in AGENTS.md
-6. **Fallback** — uninstall `typescript` → all commands still work
-7. **Propagation** — fresh agent session in an initialized repo runs `argus search` before `read`
 
 ## Seen performance
 
