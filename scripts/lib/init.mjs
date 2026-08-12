@@ -8,8 +8,8 @@ function norm(p) {
   return p.split('\\').join('/');
 }
 
-function argusBlock(skillScriptsDir) {
-  const cli = `node ${norm(path.join(skillScriptsDir, 'argus.mjs'))}`;
+function argusBlock(skillScriptsDir, cliName) {
+  const cli = cliName || `node ${norm(path.join(skillScriptsDir, 'argus.mjs'))}`;
   return [
     `${MARK_START}`,
     `# Argus — repo-navigator (installed by \`argus init\`, keep this block)`,
@@ -25,6 +25,8 @@ function argusBlock(skillScriptsDir) {
     `- \`${cli} context <file>\`   → structural summary of a file, no raw code`,
     ``,
     `Workflow: SEARCH → LOCATE → NARROW → READ → EDIT.`,
+    ``,
+    `If \`argus\` is not on PATH, fall back to: \`node ${norm(path.join(skillScriptsDir, 'argus.mjs'))} <command>\``,
     `${MARK_END}`,
   ].join('\n');
 }
@@ -55,8 +57,8 @@ function ensureGitignore(projectDir) {
   }
 }
 
-function cursorRuleFile(skillScriptsDir, projectDir) {
-  const cli = `node ${norm(path.join(skillScriptsDir, 'argus.mjs'))}`;
+function cursorRuleFile(skillScriptsDir, cliName) {
+  const cli = cliName || `node ${norm(path.join(skillScriptsDir, 'argus.mjs'))}`;
   return `---
 description: Query the argus repository index before reading source files
 globs: ["**/*"]
@@ -72,7 +74,7 @@ ${MARK_END}
 `;
 }
 
-export function initProject(projectDir, skillRoot, agentTargets) {
+export function initProject(projectDir, skillRoot, agentTargets, cliName) {
   const scriptsDir = path.join(skillRoot, 'scripts');
   fs.mkdirSync(path.join(projectDir, '.opencode'), { recursive: true });
 
@@ -81,7 +83,7 @@ export function initProject(projectDir, skillRoot, agentTargets) {
     : ['opencode', 'claude', 'cursor', 'copilot'];
 
   const written = [];
-  const block = argusBlock(scriptsDir);
+  const block = argusBlock(scriptsDir, cliName);
 
   const gitPath = path.join(projectDir, '.git');
   if (fs.existsSync(gitPath)) {
@@ -112,7 +114,7 @@ export function initProject(projectDir, skillRoot, agentTargets) {
     const rulesDir = path.join(projectDir, '.cursor', 'rules');
     fs.mkdirSync(rulesDir, { recursive: true });
     const f = path.join(rulesDir, 'argus.mdc');
-    fs.writeFileSync(f, cursorRuleFile(scriptsDir, projectDir));
+    fs.writeFileSync(f, cursorRuleFile(scriptsDir, cliName));
     written.push(`.cursor/rules/argus.mdc ← created`);
   }
 

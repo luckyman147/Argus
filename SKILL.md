@@ -41,7 +41,15 @@ The index is a MAP, not source code. Query it; never dump it into context.
 ### Run the CLI
 
 ```bash
-node <skill>/scripts/argus.mjs <command> [--root <dir>]
+argus <command> [--root <dir>]
+```
+
+A bare `argus` command is installed on PATH by `argus init` / `argus shim`
+(or by `npm install -g argus-repo-navigator`). If it is not on PATH, fall back
+to:
+
+```bash
+node <skill>/scripts/argus.mjs <command>
 ```
 
 (`<skill>` = this skill's directory; on this machine:
@@ -51,7 +59,8 @@ node <skill>/scripts/argus.mjs <command> [--root <dir>]
 
 | Command | Purpose |
 |---|---|
-| `init` | index + write AGENTS.md / CLAUDE.md / .cursor / copilot rules so every agent uses argus on every execution |
+| `shim` | install the bare `argus` command on PATH (run once per machine) |
+| `init` | index + shim + write AGENTS.md / CLAUDE.md / .cursor / copilot rules so every agent uses argus on every execution |
 | `index [--force]` | (re)build the index, incremental by mtime |
 | `index --semantic` | also run TypeScript semantic pass → precise call sites |
 | `map` | file tree with languages, line counts, sizes |

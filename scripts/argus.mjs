@@ -8,6 +8,7 @@ import { maskSource, extractSymbols, extractImports } from './lib/extract.mjs';
 import { languageKind, isLikelyComponent } from './lib/lang.mjs';
 import { resolveTypeScript, analyzeSemantic } from './lib/semantic.mjs';
 import { initProject, isInitialized } from './lib/init.mjs';
+import { installShim, shimBinDir } from './lib/shim.mjs';
 import { humanSize, banner, list } from './lib/report.mjs';
 
 const SCRIPTS_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -19,12 +20,13 @@ function norm(p) {
 }
 
 function parseArgs(argv) {
-  const flags = { root: process.cwd(), force: false, semantic: false, depth: 3, agents: ['opencode', 'claude', 'cursor', 'copilot'] };
+  const flags = { root: process.cwd(), force: false, semantic: false, depth: 3, agents: ['opencode', 'claude', 'cursor', 'copilot'], noShim: false };
   const positional = [];
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--force') flags.force = true;
     else if (a === '--semantic') flags.semantic = true;
+    else if (a === '--no-shim') flags.noShim = true;
     else if (a === '--root') flags.root = path.resolve(argv[++i]);
     else if (a === '--depth') flags.depth = parseInt(argv[++i], 10) || 3;
     else if (a === '--agents') flags.agents = argv[++i].split(',').map((x) => x.trim());
@@ -425,9 +427,10 @@ function cmdStats(positional, flags) {
 function cmdHelp() {
   console.log(
     'ARGUS — hundred-eyed repository navigator\n' +
-    'usage: node argus.mjs <command> [args] [--root <dir>] [--force] [--semantic] [--depth N] [--agents a,b,c]\n' +
+    'usage: argus <command> [args] [--root <dir>] [--force] [--semantic] [--depth N] [--agents a,b,c]\n' +
     '\n' +
-    '  init          index + write AGENTS.md/per-agent rules   argus init [--agents opencode,claude,cursor,copilot]\n' +
+    '  shim          install a bare `argus` command on PATH (no node prefix needed)\n' +
+    '  init          index + shim + write AGENTS.md/per-agent rules   [--no-shim to skip]\n' +
     '  index         build the SQLite index (.opencode/repo-index.sqlite)\n' +
     '  map           file tree with languages + sizes\n' +
     '  search <q>    symbols + files matching query\n' +
@@ -459,14 +462,29 @@ async function main() {
 
   switch (cmd) {
     case 'init': {
+      const cliName = flags.noShim ? undefined : 'argus';
       const r = indexRepo(flags.root, {});
       await r;
-      const written = initProject(flags.root, SKILL_ROOT, flags.agents);
+      const written = initProject(flags.root, SKILL_ROOT, flags.agents, cliName);
       console.log(banner('ARGUS INIT'));
       written.forEach((w) => console.log(`  ✓ ${w}`));
       console.log('\n  any AI agent (Claude, OpenCode, Codex, Cursor, Copilot) will now');
       console.log('  find the index + usage rules on every execution.');
-      console.log(`  CLI: node ${norm(path.join(SCRIPTS_DIR, 'argus.mjs'))} <command>`);
+      if (!flags.noShim) {
+        const shim = installShim(SCRIPTS_DIR);
+        console.log(`\n  ✓ shim installed: 'argus' command → ${shim.binDir}`);
+        console.log('    new shells can now run: argus search <query>   (no node prefix needed)');
+        console.log('    note: open new terminals or restart your agent so PATH picks it up.');
+      }
+      console.log(`  CLI: argus <command> (fallback: node ${norm(path.join(SCRIPTS_DIR, 'argus.mjs'))} <command>)`);
+      break;
+    }
+    case 'shim': {
+      const { binDir, written } = installShim(SCRIPTS_DIR);
+      console.log(banner('ARGUS SHIM'));
+      written.forEach((w) => console.log(`  ✓ ${w}`));
+      console.log(`\n  bin dir: ${binDir}`);
+      console.log('  now run: argus <command>  (open a new terminal first)');
       break;
     }
     case 'index':

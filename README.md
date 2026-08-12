@@ -176,9 +176,19 @@ npx argus-repo-navigator init
 ## Usage in a project
 
 ```bash
-argus init          # index + wire AGENTS.md / per-agent rules
+argus init          # bare `argus` command + index + AGENTS.md/per-agent rules
 argus search <q>    # symbols + files, each with an exact line range
 ```
+
+No `node ...` prefix needed — `argus` is a native command:
+
+- `npm install -g argus-repo-navigator` puts `argus` on PATH automatically, or
+- `argus shim` (run once from any install) installs a `argus` shim into
+  `%LOCALAPPDATA%\argus\bin` (Windows) / `~/.local/bin` (Unix) and adds it to
+  PATH; `argus init` does this for you too.
+
+`argus init` writes a fallback `node <skill>/scripts/argus.mjs` line into
+AGENTS.md, so agents still work even on machines without the shim.
 
 Agent install locations (global skills, loaded on demand — no prompt cost until
 used):
